@@ -238,6 +238,7 @@ ConVar *OsuMainMenu::m_win_snd_fallback_dsound_ref = NULL;
 ConVar *OsuMainMenu::m_osu_universal_offset_hardcoded_fallback_dsound_ref = NULL;
 ConVar *OsuMainMenu::m_osu_slider_border_feather_ref = NULL;
 ConVar *OsuMainMenu::m_osu_mod_random_ref = NULL;
+ConVar *OsuMainMenu::m_osu_mod_random_lazer_ref = NULL;
 ConVar *OsuMainMenu::m_osu_songbrowser_background_fade_in_duration_ref = NULL;
 
 void OsuMainMenu::openSteamWorkshopInGameOverlay(Osu *osu, bool launchInSteamIfOverlayDisabled)
@@ -287,6 +288,8 @@ OsuMainMenu::OsuMainMenu(Osu *osu) : OsuScreen(osu)
 		m_osu_slider_border_feather_ref = convar->getConVarByName("osu_slider_border_feather");
 	if (m_osu_mod_random_ref == NULL)
 		m_osu_mod_random_ref = convar->getConVarByName("osu_mod_random");
+	if (m_osu_mod_random_lazer_ref == NULL)
+		m_osu_mod_random_lazer_ref = convar->getConVarByName("osu_mod_random_lazer");
 	if (m_osu_songbrowser_background_fade_in_duration_ref == NULL)
 		m_osu_songbrowser_background_fade_in_duration_ref = convar->getConVarByName("osu_songbrowser_background_fade_in_duration");
 
@@ -435,6 +438,9 @@ OsuMainMenu::OsuMainMenu(Osu *osu) : OsuScreen(osu)
 		const bool wasModRandomEnabled = m_osu_mod_random_ref->getBool();
 		if (wasModRandomEnabled)
 			m_osu_mod_random_ref->setValue(0.0f);
+		const bool wasModRandomLazerEnabled = m_osu_mod_random_lazer_ref->getBool();
+		if (wasModRandomLazerEnabled)
+			m_osu_mod_random_lazer_ref->setValue(0.0f);
 
 		OsuDatabaseBeatmap::LOAD_GAMEPLAY_RESULT result = OsuDatabaseBeatmap::loadGameplay(m_mainMenuSliderTextDatabaseBeatmap, m_mainMenuSliderTextBeatmapStandard);
 		if (result.errorCode == 0)
@@ -453,6 +459,8 @@ OsuMainMenu::OsuMainMenu(Osu *osu) : OsuScreen(osu)
 		// HACKHACK: temporary workaround to avoid this breaking the main menu logo text sliders (2/2)
 		if (wasModRandomEnabled)
 			m_osu_mod_random_ref->setValue(1.0f);
+		if (wasModRandomLazerEnabled)
+			m_osu_mod_random_lazer_ref->setValue(1.0f);
 	}
 }
 

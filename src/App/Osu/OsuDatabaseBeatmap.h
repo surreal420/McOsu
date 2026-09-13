@@ -375,6 +375,8 @@ private:
 	static CALCULATE_SLIDER_TIMES_CLICKS_TICKS_RESULT calculateSliderTimesClicksTicks(int beatmapVersion, std::vector<SLIDER> &sliders, std::vector<TIMINGPOINT> &timingpoints, float sliderMultiplier, float sliderTickRate);
 	static CALCULATE_SLIDER_TIMES_CLICKS_TICKS_RESULT calculateSliderTimesClicksTicks(int beatmapVersion, std::vector<SLIDER> &sliders, std::vector<TIMINGPOINT> &timingpoints, float sliderMultiplier, float sliderTickRate, const std::atomic<bool> &dead);
 
+	static void applyLazerRandom(PRIMITIVE_CONTAINER &c, std::vector<TIMINGPOINT> &timingpoints, int seed, float circleRadius, bool includeSpinners); // osu_mod_random_lazer
+
 	Osu *m_osu;
 
 	UString m_sFolder;		// path to folder containing .osu file (e.g. "/path/to/beatmapfolder/")

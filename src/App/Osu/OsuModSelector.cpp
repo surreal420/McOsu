@@ -249,6 +249,7 @@ OsuModSelector::OsuModSelector(Osu *osu) : OsuScreen(osu)
 	addExperimentalCheckbox("Jigsaw 1", "Unnecessary clicks count as misses.", convar->getConVarByName("osu_mod_jigsaw1"));
 	addExperimentalCheckbox("Jigsaw 2", "Massively reduced slider follow circle radius.", convar->getConVarByName("osu_mod_jigsaw2"));
 	m_experimentalModRandomCheckbox = addExperimentalCheckbox("Random", "Randomizes hitobject positions. (VERY experimental!)\nUse osu_mod_random_seed to set a fixed rng seed.", convar->getConVarByName("osu_mod_random"));
+	m_experimentalModRandomLazerCheckbox = addExperimentalCheckbox("Random (lazer)", "Randomizes hitobject positions like osu!lazer's Random mod. (Reload beatmap to apply!)\nKeeps every jump distance, randomizes the angles, sliders keep their shape.\nUse osu_mod_random_seed to set a fixed rng seed, osu_mod_random_lazer_angle_sharpness (1-10) to tune the angles.", convar->getConVarByName("osu_mod_random_lazer"));
 	addExperimentalCheckbox("Reverse Sliders", "Reverses the direction of all sliders. (Reload beatmap to apply!)", convar->getConVarByName("osu_mod_reverse_sliders"));
 	addExperimentalCheckbox("No Spinners", "Play without spinners. (Reload beatmap to apply!)", convar->getConVarByName("osu_mod_no_spinners"));
 	addExperimentalCheckbox("No 50s", "Only 300s or 100s. Try harder.", convar->getConVarByName("osu_mod_no50s"));
@@ -544,6 +545,8 @@ void OsuModSelector::update()
 	// some experimental mod tooltip overrides
 	if (m_experimentalModRandomCheckbox->isChecked() && m_osu->getSelectedBeatmap() != NULL)
 		m_experimentalModRandomCheckbox->setTooltipText(UString::format("Seed = %i", m_osu->getSelectedBeatmap()->getRandomSeed()));
+	if (m_experimentalModRandomLazerCheckbox->isChecked() && m_osu->getSelectedBeatmap() != NULL)
+		m_experimentalModRandomLazerCheckbox->setTooltipText(UString::format("Seed = %i", m_osu->getSelectedBeatmap()->getRandomSeed()));
 
 	// handle experimental mods visibility
 	bool experimentalModEnabled = false;

@@ -159,6 +159,7 @@ private:
 	// experimental mods
 	std::vector<EXPERIMENTAL_MOD> m_experimentalMods;
 	OsuUICheckbox *m_experimentalModRandomCheckbox;
+	OsuUICheckbox *m_experimentalModRandomLazerCheckbox;
 
 	// score multiplier info label
 	CBaseUILabel *m_scoreMultiplierLabel;

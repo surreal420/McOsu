@@ -26,9 +26,11 @@
 #include "OsuSliderCurves.h"
 #include "OsuSpinner.h"
 #include "OsuManiaNote.h"
+#include "OsuLazerRandom.h"
 
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 
 ConVar osu_mod_random("osu_mod_random", false, FCVAR_NONE);
 ConVar osu_mod_random_seed("osu_mod_random_seed", 0, FCVAR_NONE, "0 = random seed every reload, any other value will force that value to be used as the seed");
@@ -38,6 +40,8 @@ ConVar osu_mod_random_slider_offset_x_percent("osu_mod_random_slider_offset_x_pe
 ConVar osu_mod_random_slider_offset_y_percent("osu_mod_random_slider_offset_y_percent", 1.0f, FCVAR_NONE, "how much the randomness affects things");
 ConVar osu_mod_random_spinner_offset_x_percent("osu_mod_random_spinner_offset_x_percent", 1.0f, FCVAR_NONE, "how much the randomness affects things");
 ConVar osu_mod_random_spinner_offset_y_percent("osu_mod_random_spinner_offset_y_percent", 1.0f, FCVAR_NONE, "how much the randomness affects things");
+ConVar osu_mod_random_lazer("osu_mod_random_lazer", false, FCVAR_NONE, "osu!lazer style Random: keeps all jump distances, randomizes the angles, sliders keep their shape (uses osu_mod_random_seed)");
+ConVar osu_mod_random_lazer_angle_sharpness("osu_mod_random_lazer_angle_sharpness", 7.0f, FCVAR_NONE, "1 - 10, how sharp the angles between hitobjects should be (osu!lazer Random \"Angle sharpness\" setting)");
 ConVar osu_mod_reverse_sliders("osu_mod_reverse_sliders", false, FCVAR_NONE);
 ConVar osu_mod_no_spinners("osu_mod_no_spinners", false, FCVAR_NONE);
 ConVar osu_mod_strict_tracking("osu_mod_strict_tracking", false, FCVAR_NONE);
@@ -1429,6 +1433,133 @@ bool OsuDatabaseBeatmap::loadMetadata(OsuDatabaseBeatmap *databaseBeatmap)
 	return true;
 }
 
+void OsuDatabaseBeatmap::applyLazerRandom(PRIMITIVE_CONTAINER &c, std::vector<TIMINGPOINT> &timingpoints, int seed, float circleRadius, bool includeSpinners)
+{
+	std::vector<OsuLazerRandom::OBJECT> objects;
+	objects.reserve(c.hitcircles.size() + c.sliders.size() + c.spinners.size());
+
+	for (size_t i=0; i<c.hitcircles.size(); i++)
+	{
+		const HITCIRCLE &h = c.hitcircles[i];
+
+		OsuLazerRandom::OBJECT o;
+		o.type = OsuLazerRandom::TYPE::CIRCLE;
+		o.time = (long)h.time;
+		o.comboIndex = std::max(h.number - 1, 0);
+		o.newCombo = (h.number <= 1);
+		o.tag = (int)i;
+		o.pos = Vector2(h.x, h.y);
+
+		objects.push_back(o);
+	}
+
+	for (size_t i=0; i<c.sliders.size(); i++)
+	{
+		const SLIDER &s = c.sliders[i];
+
+		OsuLazerRandom::OBJECT o;
+		o.type = OsuLazerRandom::TYPE::SLIDER;
+		o.time = s.time;
+		o.comboIndex = std::max(s.number - 1, 0);
+		o.newCombo = (s.number <= 1);
+		o.tag = (int)i;
+		o.pos = (s.points.size() > 0 ? s.points[0] : Vector2(s.x, s.y));
+		o.endsAtHead = (s.repeat % 2 == 0);
+
+		// sample the curve relative to the head (same curve the OsuSlider will build later)
+		OsuSliderCurve *curve = OsuSliderCurve::createCurve(s.type, s.points, s.pixelLength);
+		if (curve != NULL)
+		{
+			const std::vector<Vector2> &curvePoints = curve->getPoints();
+			o.path.reserve(curvePoints.size());
+			for (size_t p=0; p<curvePoints.size(); p++)
+			{
+				o.path.push_back(curvePoints[p] - o.pos);
+			}
+			SAFE_DELETE(curve);
+		}
+		if (o.path.size() < 1)
+			o.path.push_back(Vector2(0, 0));
+
+		objects.push_back(o);
+	}
+
+	if (includeSpinners)
+	{
+		for (size_t i=0; i<c.spinners.size(); i++)
+		{
+			const SPINNER &s = c.spinners[i];
+
+			OsuLazerRandom::OBJECT o;
+			o.type = OsuLazerRandom::TYPE::SPINNER;
+			o.time = (long)s.time;
+			o.comboIndex = 0;
+			o.newCombo = true;
+			o.tag = (int)i;
+			o.pos = Vector2(s.x, s.y);
+
+			objects.push_back(o);
+		}
+	}
+
+	if (objects.size() < 1) return;
+
+	// chronological order (lazer walks the beatmap in order)
+	std::stable_sort(objects.begin(), objects.end(), [](const OsuLazerRandom::OBJECT &a, const OsuLazerRandom::OBJECT &b) {return a.time < b.time;});
+
+	// beat alignment (lazer: IsHitObjectOnBeat(), assumes 4/4 for downbeats since the timingpoints don't carry the meter here)
+	for (size_t i=0; i<objects.size(); i++)
+	{
+		OsuLazerRandom::OBJECT &o = objects[i];
+
+		const TIMING_INFO t = getTimingInfoForTimeAndTimingPoints((unsigned long)std::max(o.time, (long)0), timingpoints);
+		const double beatLength = t.beatLengthBase;
+		const double timeSinceTimingPoint = (double)o.time - (double)t.offset;
+
+		if (beatLength > 0.0 && !std::isnan(beatLength))
+		{
+			// ensure within 1 ms of the expected location
+			o.onBeat = (std::fmod(std::fabs(timeSinceTimingPoint + 1.0), beatLength) < 2.0);
+			o.onDownbeat = (std::fmod(std::fabs(timeSinceTimingPoint + 1.0), beatLength * 4.0) < 2.0);
+		}
+	}
+
+	OsuLazerRandom::reposition(objects, seed, osu_mod_random_lazer_angle_sharpness.getFloat(), circleRadius);
+
+	// write the new layout back into the primitives
+	for (size_t i=0; i<objects.size(); i++)
+	{
+		const OsuLazerRandom::OBJECT &o = objects[i];
+
+		switch (o.type)
+		{
+		case OsuLazerRandom::TYPE::CIRCLE:
+			{
+				HITCIRCLE &h = c.hitcircles[o.tag];
+				h.x = (int)std::round(o.pos.x);
+				h.y = (int)std::round(o.pos.y);
+			}
+			break;
+
+		case OsuLazerRandom::TYPE::SLIDER:
+			{
+				SLIDER &s = c.sliders[o.tag];
+				const Vector2 originalHead = (s.points.size() > 0 ? s.points[0] : Vector2(s.x, s.y));
+				for (size_t p=0; p<s.points.size(); p++)
+				{
+					s.points[p] = OsuLazerRandom::applySliderTransform(o, originalHead, s.points[p]);
+				}
+				s.x = (int)std::round(o.pos.x);
+				s.y = (int)std::round(o.pos.y);
+			}
+			break;
+
+		default:
+			break;
+		}
+	}
+}
+
 OsuDatabaseBeatmap::LOAD_GAMEPLAY_RESULT OsuDatabaseBeatmap::loadGameplay(OsuDatabaseBeatmap *databaseBeatmap, OsuBeatmap *beatmap)
 {
 	LOAD_GAMEPLAY_RESULT result = LOAD_GAMEPLAY_RESULT();
@@ -1503,6 +1634,10 @@ OsuDatabaseBeatmap::LOAD_GAMEPLAY_RESULT OsuDatabaseBeatmap::loadGameplay(OsuDat
 
 		if (beatmapStandard != NULL)
 		{
+			// osu!lazer style random (keeps jump distances, randomizes angles, sliders keep their shape), must run before the hitobjects are built
+			if (osu_mod_random_lazer.getBool())
+				applyLazerRandom(c, databaseBeatmap->m_timingpoints, result.randomSeed, OsuGameRules::getRawHitCircleDiameter(beatmap->getCS()) / 2.0f, !osu_mod_no_spinners.getBool());
+
 			// also calculate max possible combo
 			int maxPossibleCombo = 0;
 
