@@ -206,6 +206,7 @@ private:
 	ConVar *m_fposu_crosshair_dot_ref;
 	ConVar *m_fposu_crosshair_length_ref;
 	ConVar *m_fposu_crosshair_gap_ref;
+	ConVar *m_fposu_crosshair_screen_height_ref;
 	ConVar *m_osu_playfield_stretch_x_ref;
 	ConVar *m_osu_playfield_stretch_y_ref;
 	ConVar *m_osu_mp_win_condition_accuracy_ref;

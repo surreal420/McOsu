@@ -34,6 +34,7 @@
 #include "OsuKeyBindings.h"
 #include "OsuTooltipOverlay.h"
 #include "OsuNotificationOverlay.h"
+#include "OsuFPoSuCrosshair.h"
 #include "OsuSteamWorkshop.h"
 #include "OsuMainMenu.h"
 #include "OsuSliderRenderer.h"
@@ -160,6 +161,30 @@ public:
 private:
 	Osu *m_osu;
 	int m_iMode;
+};
+
+class OsuOptionsMenuFPoSuCrosshairPreviewElement : public CBaseUIElement
+{
+public:
+	OsuOptionsMenuFPoSuCrosshairPreviewElement(Osu *osu, float xPos, float yPos, float xSize, float ySize, UString name) : CBaseUIElement(xPos, yPos, xSize, ySize, name) {m_osu = osu;}
+
+	virtual void draw(Graphics *g)
+	{
+		if (!m_bVisible) return;
+
+		// dark "map" background like the CS2 crosshair preview
+		g->setColor(0xff2b3138);
+		g->fillRect(m_vPos.x, m_vPos.y, m_vSize.x, m_vSize.y);
+		g->setColor(0xff3a424b);
+		g->drawRect(m_vPos.x, m_vPos.y, m_vSize.x, m_vSize.y);
+
+		// 1:1 pixels, exactly what is drawn during gameplay
+		const Vector2 center = Vector2((int)(m_vPos.x + m_vSize.x/2.0f), (int)(m_vPos.y + m_vSize.y/2.0f));
+		m_osu->getHUD()->drawFPoSuCrosshair(g, center, 1.0f);
+	}
+
+private:
+	Osu *m_osu;
 };
 
 class OsuOptionsMenuSliderPreviewElement : public CBaseUIElement
@@ -515,6 +540,8 @@ OsuOptionsMenu::OsuOptionsMenu(Osu *osu) : OsuScreenBackable(osu)
 	m_wasapiPeriodSizeResetButton = NULL;
 	m_asioBufferSizeSlider = NULL;
 	m_dpiTextbox = NULL;
+	m_fposuCrosshairCodeTextbox = NULL;
+	m_fposuCrosshairCodeLabel = NULL;
 	m_cm360Textbox = NULL;
 	m_letterboxingOffsetResetButton = NULL;
 	m_skinSelectWorkshopButton = NULL;
@@ -1270,6 +1297,16 @@ OsuOptionsMenu::OsuOptionsMenu(Osu *osu) : OsuScreenBackable(osu)
 #endif
 	addSubSection("FPoSu - Crosshair", "cs2 crosshair");
 	addCheckbox("CS2 Crosshair", "Draw a CS2 style static crosshair instead of the skin cursor while playing in FPoSu.\nAll sizes are in screen pixels, like CS2 after the 2026 \"Rush Hour\" update.\nNOTE: Use CTRL + O during gameplay to see your changes live!", convar->getConVarByName("fposu_crosshair"));
+	addFPoSuCrosshairPreview();
+	m_fposuCrosshairCodeTextbox = addTextbox("", "Share Code:");
+	{
+		OPTIONS_ELEMENT codeButtons = addButtonButtonLabel("Import Code", "Export Code", "");
+		((CBaseUIButton*)codeButtons.elements[0])->setClickCallback( fastdelegate::MakeDelegate(this, &OsuOptionsMenu::onFPoSuCrosshairImportClicked) );
+		((OsuUIButton*)codeButtons.elements[0])->setTooltipText("Paste a CS2 share code (CSGO-xxxxx-...) into the textbox above and click here.\nOnly codes from CS2 after the 2026 \"Rush Hour\" update (version 3/4) work, older codes are not compatible.");
+		((CBaseUIButton*)codeButtons.elements[1])->setClickCallback( fastdelegate::MakeDelegate(this, &OsuOptionsMenu::onFPoSuCrosshairExportClicked) );
+		((OsuUIButton*)codeButtons.elements[1])->setTooltipText("Generate a CS2 (version 4) share code from the current settings, put it into the textbox and copy it to the clipboard.");
+		m_fposuCrosshairCodeLabel = (CBaseUILabel*)codeButtons.elements[2];
+	}
 	{
 		const char *rgba[4] = {"fposu_crosshair_color_r", "fposu_crosshair_color_g", "fposu_crosshair_color_b", "fposu_crosshair_alpha"};
 		const char *rgbaLabels[4] = {"Red:", "Green:", "Blue:", "Alpha:"};
@@ -1306,6 +1343,14 @@ OsuOptionsMenu::OsuOptionsMenu(Osu *osu) : OsuScreenBackable(osu)
 		gapSlider->setKeyDelta(1);
 		gapSlider->setAnimated(false);
 	}
+	{
+		CBaseUISlider *screenHeightSlider = addSlider("Reference Height:", 0.0f, 2160.0f, convar->getConVarByName("fposu_crosshair_screen_height"), -1.0f, true);
+		screenHeightSlider->setChangeCallback( fastdelegate::MakeDelegate(this, &OsuOptionsMenu::onSliderChangeFPoSuCrosshairScreenHeight) );
+		screenHeightSlider->setKeyDelta(1);
+		screenHeightSlider->setAnimated(false);
+	}
+	addLabel("Reference Height = the screen height the pixel values are made for (set by Import).")->setTextColor(0xff555555);
+	addLabel("Like CS2, the crosshair is rescaled on other resolutions. Off = 1:1 pixels.")->setTextColor(0xff555555);
 	if (env->getOS() == Environment::OS::OS_WINDOWS)
 	{
 		addSubSection("FPoSu - Mouse");
@@ -3362,6 +3407,170 @@ void OsuOptionsMenu::onSliderChangeFPoSuCrosshairOutline(CBaseUISlider *slider)
 	}
 }
 
+void OsuOptionsMenu::onSliderChangeFPoSuCrosshairScreenHeight(CBaseUISlider *slider)
+{
+	for (int i=0; i<m_elements.size(); i++)
+	{
+		for (int e=0; e<m_elements[i].elements.size(); e++)
+		{
+			if (m_elements[i].elements[e] == slider)
+			{
+				if (m_elements[i].cvar != NULL)
+					m_elements[i].cvar->setValue(std::round(slider->getFloat())); // round to int
+
+				if (m_elements[i].elements.size() == 3)
+				{
+					const int height = m_elements[i].cvar->getInt();
+
+					CBaseUILabel *labelPointer = dynamic_cast<CBaseUILabel*>(m_elements[i].elements[2]);
+					labelPointer->setText(height > 0 ? UString::format("%ip", height) : UString("Off"));
+				}
+
+				onResetUpdate(m_elements[i].resetButton);
+
+				break;
+			}
+		}
+	}
+}
+
+void OsuOptionsMenu::onFPoSuCrosshairImportClicked()
+{
+	if (m_fposuCrosshairCodeTextbox == NULL) return;
+
+	m_fposuCrosshairCodeTextbox->stealFocus();
+
+	OsuFPoSuCrosshair::SHARECODE code;
+	const OsuFPoSuCrosshair::DECODE_RESULT result = OsuFPoSuCrosshair::decodeShareCode(std::string(m_fposuCrosshairCodeTextbox->getText().toUtf8()), code);
+
+	UString message;
+	Color color = 0xffffffff;
+	switch (result)
+	{
+	case OsuFPoSuCrosshair::DECODE_OK:
+		{
+			const OsuFPoSuCrosshair::PARAMS p = OsuFPoSuCrosshair::paramsFromShareCode(code);
+
+			convar->getConVarByName("fposu_crosshair_color_r")->setValue(p.r);
+			convar->getConVarByName("fposu_crosshair_color_g")->setValue(p.g);
+			convar->getConVarByName("fposu_crosshair_color_b")->setValue(p.b);
+			convar->getConVarByName("fposu_crosshair_alpha")->setValue(p.a);
+			convar->getConVarByName("fposu_crosshair_outline")->setValue(p.outline);
+			convar->getConVarByName("fposu_crosshair_thickness")->setValue(p.thickness);
+			convar->getConVarByName("fposu_crosshair_dot")->setValue(p.dot ? 1.0f : 0.0f);
+			convar->getConVarByName("fposu_crosshair_length")->setValue(p.length);
+			convar->getConVarByName("fposu_crosshair_gap")->setValue(p.gap);
+			convar->getConVarByName("fposu_crosshair_screen_height")->setValue(code.screenHeight);
+			convar->getConVarByName("fposu_crosshair")->setValue(1.0f);
+
+			updateFPoSuCrosshairElements();
+
+			static const char *styleNames[] = {"Dynamic Cross", "Dynamic Circle", "Dynamic Cross (Legacy)", "Static Circle", "Static Cross", "Static Cross (Shot Feedback)", "Dot Only", "Dynamic Quad", "Static Square"};
+			const char *styleName = (code.style >= 0 && code.style < 9 ? styleNames[code.style] : "Unknown");
+
+			message = UString::format("Imported v%i code (%s, %ip)", code.version, styleName, code.screenHeight);
+			if (code.style != 4 && code.style != 5)
+				message.append(" - drawn as Static Cross");
+			if (code.tStyle)
+				message.append(" - T-style ignored");
+			color = 0xff00ff00;
+		}
+		break;
+	case OsuFPoSuCrosshair::DECODE_OLD_VERSION:
+		message = "Old (pre Rush Hour) crosshair code, not compatible! Re-export it from current CS2.";
+		color = 0xffff0000;
+		break;
+	case OsuFPoSuCrosshair::DECODE_UNSUPPORTED_VERSION:
+		message = "Unsupported crosshair code version.";
+		color = 0xffff0000;
+		break;
+	case OsuFPoSuCrosshair::DECODE_BAD_CHECKSUM:
+		message = "Invalid crosshair code (checksum mismatch, typo?).";
+		color = 0xffff0000;
+		break;
+	default:
+		message = "Invalid crosshair code, expected CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx.";
+		color = 0xffff0000;
+		break;
+	}
+
+	if (m_fposuCrosshairCodeLabel != NULL)
+	{
+		m_fposuCrosshairCodeLabel->setText(result == OsuFPoSuCrosshair::DECODE_OK ? "Imported" : "Invalid code");
+		m_fposuCrosshairCodeLabel->setTextColor(color);
+	}
+	m_osu->getNotificationOverlay()->addNotification(message, color);
+}
+
+void OsuOptionsMenu::onFPoSuCrosshairExportClicked()
+{
+	if (m_fposuCrosshairCodeTextbox == NULL) return;
+
+	OsuFPoSuCrosshair::PARAMS p;
+	p.r = convar->getConVarByName("fposu_crosshair_color_r")->getInt();
+	p.g = convar->getConVarByName("fposu_crosshair_color_g")->getInt();
+	p.b = convar->getConVarByName("fposu_crosshair_color_b")->getInt();
+	p.a = convar->getConVarByName("fposu_crosshair_alpha")->getInt();
+	p.outline = convar->getConVarByName("fposu_crosshair_outline")->getInt();
+	p.thickness = convar->getConVarByName("fposu_crosshair_thickness")->getInt();
+	p.dot = convar->getConVarByName("fposu_crosshair_dot")->getBool();
+	p.length = convar->getConVarByName("fposu_crosshair_length")->getInt();
+	p.gap = convar->getConVarByName("fposu_crosshair_gap")->getInt();
+	OsuFPoSuCrosshair::clampParams(p);
+
+	// the code carries the height the pixel values are made for, which is either the imported reference height or our current screen
+	const int referenceHeight = convar->getConVarByName("fposu_crosshair_screen_height")->getInt();
+	const int screenHeight = (referenceHeight > 0 ? referenceHeight : m_osu->getScreenHeight());
+
+	const std::string code = OsuFPoSuCrosshair::encodeShareCode(OsuFPoSuCrosshair::shareCodeFromParams(p, screenHeight));
+	const UString codeString = UString(code.c_str());
+
+	m_fposuCrosshairCodeTextbox->setText(codeString);
+	env->setClipBoardText(codeString);
+
+	if (m_fposuCrosshairCodeLabel != NULL)
+	{
+		m_fposuCrosshairCodeLabel->setText("Copied");
+		m_fposuCrosshairCodeLabel->setTextColor(0xff00ff00);
+	}
+	m_osu->getNotificationOverlay()->addNotification(UString::format("Copied %s to clipboard (CS2 v4 code, %ip)", code.c_str(), screenHeight), 0xff00ff00);
+}
+
+void OsuOptionsMenu::updateFPoSuCrosshairElements()
+{
+	// push the current fposu_crosshair* ConVar values back into their checkboxes/sliders (after an import)
+	for (int i=0; i<m_elements.size(); i++)
+	{
+		if (m_elements[i].cvar == NULL) continue;
+		if (m_elements[i].cvar->getName().find("fposu_crosshair") != 0) continue;
+
+		switch (m_elements[i].type)
+		{
+		case 6: // checkbox
+			for (int e=0; e<m_elements[i].elements.size(); e++)
+			{
+				CBaseUICheckbox *checkboxPointer = dynamic_cast<CBaseUICheckbox*>(m_elements[i].elements[e]);
+				if (checkboxPointer != NULL)
+					checkboxPointer->setChecked(m_elements[i].cvar->getBool(), false);
+			}
+			break;
+		case 7: // slider
+			if (m_elements[i].elements.size() == 3)
+			{
+				CBaseUISlider *sliderPointer = dynamic_cast<CBaseUISlider*>(m_elements[i].elements[1]);
+				if (sliderPointer != NULL)
+				{
+					sliderPointer->setValue(m_elements[i].cvar->getFloat(), false);
+					sliderPointer->fireChangeCallback();
+				}
+			}
+			break;
+		}
+
+		onResetUpdate(m_elements[i].resetButton);
+	}
+}
+
 void OsuOptionsMenu::onSliderChangePercent(CBaseUISlider *slider)
 {
 	for (int i=0; i<m_elements.size(); i++)
@@ -4225,6 +4434,20 @@ CBaseUIElement *OsuOptionsMenu::addSkinPreview()
 	m_elements.push_back(e);
 
 	return skinPreview;
+}
+
+CBaseUIElement *OsuOptionsMenu::addFPoSuCrosshairPreview()
+{
+	CBaseUIElement *preview = new OsuOptionsMenuFPoSuCrosshairPreviewElement(m_osu, 0, 0, 0, 140, "fposucrosshairpreview");
+	m_options->getContainer()->addBaseUIElement(preview);
+
+	OPTIONS_ELEMENT e;
+	e.elements.push_back(preview);
+	e.type = 9;
+	e.cvar = NULL;
+	m_elements.push_back(e);
+
+	return preview;
 }
 
 CBaseUIElement *OsuOptionsMenu::addSliderPreview()

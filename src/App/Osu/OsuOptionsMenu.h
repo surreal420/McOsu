@@ -156,6 +156,10 @@ private:
 	void onSliderChangeInt(CBaseUISlider *slider);
 	void onSliderChangeIntMS(CBaseUISlider *slider);
 	void onSliderChangeFPoSuCrosshairOutline(CBaseUISlider *slider);
+	void onSliderChangeFPoSuCrosshairScreenHeight(CBaseUISlider *slider);
+	void onFPoSuCrosshairImportClicked();
+	void onFPoSuCrosshairExportClicked();
+	void updateFPoSuCrosshairElements();
 	void onSliderChangeFloatMS(CBaseUISlider *slider);
 	void onSliderChangePercent(CBaseUISlider *slider);
 
@@ -204,6 +208,7 @@ private:
 	CBaseUITextbox *addTextbox(UString text, UString labelText, ConVar *cvar = NULL);
 	CBaseUIElement *addSkinPreview();
 	CBaseUIElement *addSliderPreview();
+	CBaseUIElement *addFPoSuCrosshairPreview();
 
 	// categories
 	OsuOptionsMenuCategoryButton *addCategory(CBaseUIElement *section, wchar_t icon);
@@ -270,6 +275,8 @@ private:
 	CBaseUIButton *m_letterboxingOffsetResetButton;
 	OsuOptionsMenuSliderPreviewElement *m_sliderPreviewElement;
 	CBaseUITextbox *m_dpiTextbox;
+	CBaseUITextbox *m_fposuCrosshairCodeTextbox;
+	CBaseUILabel *m_fposuCrosshairCodeLabel;
 	CBaseUITextbox *m_cm360Textbox;
 	CBaseUIElement *m_skinSection;
 	CBaseUISlider *m_uiScaleSlider;

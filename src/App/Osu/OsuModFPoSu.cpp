@@ -107,6 +107,7 @@ ConVar fposu_crosshair_thickness("fposu_crosshair_thickness", 1, FCVAR_NONE, "0-
 ConVar fposu_crosshair_dot("fposu_crosshair_dot", false, FCVAR_NONE, "center dot");
 ConVar fposu_crosshair_length("fposu_crosshair_length", 8, FCVAR_NONE, "0-255 pixels");
 ConVar fposu_crosshair_gap("fposu_crosshair_gap", 4, FCVAR_NONE, "0-128 pixels");
+ConVar fposu_crosshair_screen_height("fposu_crosshair_screen_height", 0, FCVAR_NONE, "screen height the pixel values were made for (like cl_crosshair_screen_height), values get rescaled on other resolutions. 0 = off (1:1 pixels)");
 
 ConVar fposu_mod_strafing("fposu_mod_strafing", false, FCVAR_NONE);
 ConVar fposu_mod_strafing_strength_x("fposu_mod_strafing_strength_x", 0.3f, FCVAR_NONE);

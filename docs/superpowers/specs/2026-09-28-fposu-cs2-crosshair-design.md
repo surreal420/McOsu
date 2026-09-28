@@ -18,6 +18,7 @@ everything is in integer screen pixels, no negative gap, outline is off / full /
 | Center dot | `fposu_crosshair_dot` | bool | off |
 | Length | `fposu_crosshair_length` | 0..255 | 8 |
 | Gap | `fposu_crosshair_gap` | 0..128 | 4 |
+| Reference height | `fposu_crosshair_screen_height` | 0 (off) .. 2160 | 0 |
 
 ## Geometry (`OsuFPoSuCrosshair`, engine independent)
 
@@ -50,3 +51,44 @@ everything is in integer screen pixels, no negative gap, outline is off / full /
   (label Off/Full/Half), Thickness, Center Dot, Length, Gap. CTRL+O in gameplay
   gives a live preview.
 - `tests/OsuFPoSuCrosshairTest.cpp`: host-side test of the geometry and clamping.
+
+## Share codes (import / export)
+
+CS2 share codes look like `CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx`. The 25 characters are
+base-57 digits (alphabet `ABCDEFGHJKLMNOPQRSTUVWXYZabcdefhijkmnopqrstuvwxyz23456789`,
+least significant digit first) of an 18 byte big endian number:
+
+| Byte | Content |
+|---|---|
+| 0 | checksum = sum(bytes 1..17) & 0xff |
+| 1 | version: 1 = pre Rush Hour (rejected), 3 / 4 = current |
+| 2 | style (low 4 bits), recoil bit 4, outline bit 5 (v3 only), dot bit 6, T-style bit 7 |
+| 3..6 | r, g, b, a |
+| 7 | gap |
+| 8 | length |
+| 9 | dynamic spread limit |
+| 10..13 | little endian packed: splitdist(7) / inner alpha(5) / outer alpha(4) / split ratio(7) / thickness(5) / outline(2, v4 only) |
+| 14..15 | little endian screen height (`cl_crosshair_screen_height`) |
+| 16..17 | zero |
+
+Layout taken from the community decoder n0nz/cs2-crosshair-code and verified against
+the user's own code plus seven published pro codes (all decode and re-encode
+byte-exact, see `tests/OsuFPoSuCrosshairTest.cpp`). Old (v1) codes are detected by
+their version byte and rejected with a dedicated message instead of being misread.
+
+- Import: decodes into `fposu_crosshair_*`, stores the code's screen height in
+  `fposu_crosshair_screen_height`, enables the crosshair and refreshes the sliders.
+  Styles other than Static Cross are drawn as a static cross; T-style, recoil and the
+  dynamic fields are ignored (reported in the notification).
+- Export: always writes a v4 Static Cross code with CS2 defaults for the fields McOsu
+  does not model, screen height = reference height (or the current screen height if
+  the reference is 0), fills the textbox and copies to the clipboard.
+- Preview: `OsuOptionsMenuFPoSuCrosshairPreviewElement` draws a dark panel and calls
+  `OsuHUD::drawFPoSuCrosshair()` at its center, so it is pixel-identical to gameplay.
+
+## Reference height scaling
+
+CS2 rescales the pixel values by `screenHeight / cl_crosshair_screen_height`
+(2 px at 720p becomes 4 px at 1440p). `OsuFPoSuCrosshair::scaleToScreen()` does the
+same with round-to-nearest, thickness never below 1, then clamps to the maxima.
+Reference height 0 keeps the previous 1:1 pixel behaviour.

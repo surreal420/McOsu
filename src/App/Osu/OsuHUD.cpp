@@ -256,6 +256,7 @@ OsuHUD::OsuHUD(Osu *osu) : OsuScreen(osu)
 	m_fposu_crosshair_dot_ref = convar->getConVarByName("fposu_crosshair_dot");
 	m_fposu_crosshair_length_ref = convar->getConVarByName("fposu_crosshair_length");
 	m_fposu_crosshair_gap_ref = convar->getConVarByName("fposu_crosshair_gap");
+	m_fposu_crosshair_screen_height_ref = convar->getConVarByName("fposu_crosshair_screen_height");
 	m_osu_playfield_stretch_x_ref = convar->getConVarByName("osu_playfield_stretch_x");
 	m_osu_playfield_stretch_y_ref = convar->getConVarByName("osu_playfield_stretch_y");
 	m_osu_mp_win_condition_accuracy_ref = convar->getConVarByName("osu_mp_win_condition_accuracy");
@@ -1018,6 +1019,7 @@ void OsuHUD::drawFPoSuCrosshair(Graphics *g, Vector2 pos, float alphaMultiplier)
 	p.length = m_fposu_crosshair_length_ref->getInt();
 	p.gap = m_fposu_crosshair_gap_ref->getInt();
 	OsuFPoSuCrosshair::clampParams(p);
+	OsuFPoSuCrosshair::scaleToScreen(p, m_fposu_crosshair_screen_height_ref->getInt(), m_osu->getScreenHeight());
 
 	const std::vector<OsuFPoSuCrosshair::RECT> rects = OsuFPoSuCrosshair::build(p, (int)pos.x, (int)pos.y);
 

@@ -4,6 +4,7 @@
 
 #include "OsuFPoSuCrosshair.h"
 #include <cstdio>
+#include <string>
 #include <vector>
 
 typedef OsuFPoSuCrosshair::PARAMS PARAMS;
@@ -187,8 +188,130 @@ static void testZeroLengthAndClamping()
 	CHECK(hasRect(r, 95, 100, 4, 1, false), "build clamps thickness 0 to 1");
 }
 
+typedef OsuFPoSuCrosshair::SHARECODE SHARECODE;
+
+static void testDecodeUserCode()
+{
+	// user supplied v4 code (static cross, half outline, gap 3, length 3, thickness 1, 1080p)
+	SHARECODE c;
+	OsuFPoSuCrosshair::DECODE_RESULT res = OsuFPoSuCrosshair::decodeShareCode("CSGO-j2ajq-qWSp8-eZuK3-ZWxTa-tDnoE", c);
+	CHECK(res == OsuFPoSuCrosshair::DECODE_OK, "user code: decode result %d", (int)res);
+	CHECK(c.version == 4, "user code: version %d", c.version);
+	CHECK(c.style == 4, "user code: style %d", c.style);
+	CHECK(c.outline == OsuFPoSuCrosshair::OUTLINE_HALF, "user code: outline %d", c.outline);
+	CHECK(c.r == 255 && c.g == 182 && c.b == 193 && c.a == 220, "user code: rgba %d %d %d %d", c.r, c.g, c.b, c.a);
+	CHECK(c.gap == 3 && c.length == 3 && c.thickness == 1, "user code: gap %d length %d thickness %d", c.gap, c.length, c.thickness);
+	CHECK(!c.dot && !c.tStyle && !c.recoil, "user code: flags");
+	CHECK(c.spreadLimit == 255 && c.splitDistance == 5 && c.innerAlphaRaw == 20 && c.outerAlphaRaw == 0 && c.splitRatioRaw == 0, "user code: dynamic fields");
+	CHECK(c.screenHeight == 1080, "user code: screen height %d", c.screenHeight);
+
+	// whitespace and lowercase "csgo-" prefix are tolerated
+	CHECK(OsuFPoSuCrosshair::decodeShareCode("  csgo-j2ajq-qWSp8-eZuK3-ZWxTa-tDnoE\n", c) == OsuFPoSuCrosshair::DECODE_OK, "user code: trimmed/lowercase prefix");
+}
+
+static void testDecodePublicCodes()
+{
+	SHARECODE c;
+	// f0rest (v4): style 5, dot, full outline, 250/250/250, gap 0, length 2, thickness 1
+	CHECK(OsuFPoSuCrosshair::decodeShareCode("CSGO-uQPmY-jAqPO-O4O2C-Gj299-BzuKG", c) == OsuFPoSuCrosshair::DECODE_OK, "f0rest: decode");
+	CHECK(c.version == 4 && c.style == 5 && c.dot && c.outline == 1 && c.r == 250 && c.gap == 0 && c.length == 2 && c.thickness == 1 && c.screenHeight == 1080, "f0rest: fields");
+
+	// donk (v3): outline off, 0/255/135, gap 0, length 2, thickness 2, 960p
+	CHECK(OsuFPoSuCrosshair::decodeShareCode("CSGO-RK9FT-PLK2v-dsfSa-5w8jZ-7fDxH", c) == OsuFPoSuCrosshair::DECODE_OK, "donk: decode");
+	CHECK(c.version == 3 && c.style == 4 && !c.dot && c.outline == 0 && c.g == 255 && c.b == 135 && c.gap == 0 && c.length == 2 && c.thickness == 2 && c.screenHeight == 960, "donk: fields");
+
+	// v3 with outline bit set (published fixture): outline 1, thickness 31, length 255, 1440p
+	CHECK(OsuFPoSuCrosshair::decodeShareCode("CSGO-frCAy-PRXin-PY8Kj-wDTUo-TWAwO", c) == OsuFPoSuCrosshair::DECODE_OK, "v3 fixture: decode");
+	CHECK(c.version == 3 && c.outline == 1 && c.thickness == 31 && c.length == 255 && c.screenHeight == 1440, "v3 fixture: fields");
+
+	// v4 with recoil + dot, style 2
+	CHECK(OsuFPoSuCrosshair::decodeShareCode("CSGO-sP6xU-TSyN9-sZcO5-2D48M-UppkP", c) == OsuFPoSuCrosshair::DECODE_OK, "v4b: decode");
+	CHECK(c.version == 4 && c.style == 2 && c.recoil && c.dot && c.outline == 0 && c.r == 255 && c.length == 5 && c.screenHeight == 768, "v4b: fields");
+}
+
+static void testDecodeErrors()
+{
+	SHARECODE c;
+	CHECK(OsuFPoSuCrosshair::decodeShareCode("", c) == OsuFPoSuCrosshair::DECODE_BAD_FORMAT, "empty");
+	CHECK(OsuFPoSuCrosshair::decodeShareCode("CSGO-j2ajq-qWSp8-eZuK3-ZWxTa", c) == OsuFPoSuCrosshair::DECODE_BAD_FORMAT, "too short");
+	CHECK(OsuFPoSuCrosshair::decodeShareCode("CSGO-j2ajq-qWSp8-eZuK3-ZWxTa-tDno0", c) == OsuFPoSuCrosshair::DECODE_BAD_FORMAT, "invalid character (0 is not in the alphabet)");
+	CHECK(OsuFPoSuCrosshair::decodeShareCode("CSGO-j2ajq-qWSp8-eZuK3-ZWxTa-tDnoF", c) == OsuFPoSuCrosshair::DECODE_BAD_CHECKSUM, "checksum");
+	CHECK(OsuFPoSuCrosshair::decodeShareCode("CSGO-99999-99999-99999-99999-99999", c) == OsuFPoSuCrosshair::DECODE_BAD_FORMAT, "out of 144 bit range");
+	// pre "Rush Hour" (v1) code: must be rejected as old, not as garbage
+	CHECK(OsuFPoSuCrosshair::decodeShareCode("CSGO-WsnnD-eHaMw-QNDf9-oxuDh-ydOUD", c) == OsuFPoSuCrosshair::DECODE_OLD_VERSION, "old v1 code");
+}
+
+static void testEncodeRoundtrip()
+{
+	const char *codes[] = {
+		"CSGO-j2ajq-qWSp8-eZuK3-ZWxTa-tDnoE",
+		"CSGO-uQPmY-jAqPO-O4O2C-Gj299-BzuKG",
+		"CSGO-RK9FT-PLK2v-dsfSa-5w8jZ-7fDxH",
+		"CSGO-UJOA4-HOjFP-Dy4wk-vieCq-TKTVP",
+		"CSGO-OK6DC-masuG-LF59Q-s3K4w-GpqcG",
+		"CSGO-7CGxA-32vy6-NNuc4-WCUpn-SUpAL",
+		"CSGO-frCAy-PRXin-PY8Kj-wDTUo-TWAwO",
+		"CSGO-sP6xU-TSyN9-sZcO5-2D48M-UppkP",
+	};
+	for (size_t i=0; i<sizeof(codes)/sizeof(codes[0]); i++)
+	{
+		SHARECODE c;
+		CHECK(OsuFPoSuCrosshair::decodeShareCode(codes[i], c) == OsuFPoSuCrosshair::DECODE_OK, "roundtrip %zu: decode", i);
+		const std::string again = OsuFPoSuCrosshair::encodeShareCode(c);
+		CHECK(again == codes[i], "roundtrip %zu: got %s", i, again.c_str());
+	}
+
+	// a default constructed SHARECODE encodes as v4 and survives a roundtrip
+	SHARECODE d;
+	d.r = 12; d.g = 34; d.b = 56; d.a = 78; d.gap = 3; d.length = 9; d.thickness = 2; d.outline = 2; d.dot = true; d.screenHeight = 1440;
+	const std::string code = OsuFPoSuCrosshair::encodeShareCode(d);
+	CHECK(code.size() == 34 && code.compare(0, 5, "CSGO-") == 0, "default encode: format %s", code.c_str());
+	SHARECODE e;
+	CHECK(OsuFPoSuCrosshair::decodeShareCode(code, e) == OsuFPoSuCrosshair::DECODE_OK, "default encode: decodes");
+	CHECK(e.version == 4 && e.style == 4 && e.r == 12 && e.g == 34 && e.b == 56 && e.a == 78 && e.gap == 3 && e.length == 9 && e.thickness == 2 && e.outline == 2 && e.dot && e.screenHeight == 1440, "default encode: fields survive");
+}
+
+static void testParamsConversion()
+{
+	SHARECODE c;
+	OsuFPoSuCrosshair::decodeShareCode("CSGO-j2ajq-qWSp8-eZuK3-ZWxTa-tDnoE", c);
+	PARAMS p = OsuFPoSuCrosshair::paramsFromShareCode(c);
+	CHECK(p.r == 255 && p.g == 182 && p.b == 193 && p.a == 220 && p.outline == 2 && p.thickness == 1 && !p.dot && p.length == 3 && p.gap == 3, "params from code");
+
+	p.dot = true;
+	SHARECODE back = OsuFPoSuCrosshair::shareCodeFromParams(p, 1440);
+	CHECK(back.version == 4 && back.style == 4 && back.dot && back.a == 220 && back.gap == 3 && back.screenHeight == 1440, "code from params");
+}
+
+static void testScaleToScreen()
+{
+	PARAMS p = base();
+	p.thickness = 2; p.length = 3; p.gap = 3;
+	OsuFPoSuCrosshair::scaleToScreen(p, 1080, 1440);
+	CHECK(p.thickness == 3 && p.length == 4 && p.gap == 4, "scale 1080->1440: %d %d %d", p.thickness, p.length, p.gap);
+
+	p = base(); p.thickness = 2; p.length = 3; p.gap = 3;
+	OsuFPoSuCrosshair::scaleToScreen(p, 0, 1440);
+	CHECK(p.thickness == 2 && p.length == 3 && p.gap == 3, "scale with reference 0: unchanged");
+
+	p = base(); p.thickness = 1; p.length = 1; p.gap = 1;
+	OsuFPoSuCrosshair::scaleToScreen(p, 2160, 720);
+	CHECK(p.thickness == 1 && p.length == 0 && p.gap == 0, "scale 2160->720: thickness stays >= 1, others round to 0 (%d %d %d)", p.thickness, p.length, p.gap);
+
+	p = base(); p.thickness = 31; p.length = 255; p.gap = 128;
+	OsuFPoSuCrosshair::scaleToScreen(p, 720, 2160);
+	CHECK(p.thickness == 31 && p.length == 255 && p.gap == 128, "scale up clamps to the maxima");
+}
+
 int main()
 {
+	testDecodeUserCode();
+	testDecodePublicCodes();
+	testDecodeErrors();
+	testEncodeRoundtrip();
+	testParamsConversion();
+	testScaleToScreen();
+
 	testThinCrossNoOutline();
 	testCenterDot();
 	testThickBarsAndZeroGap();
