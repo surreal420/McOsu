@@ -23,9 +23,15 @@ everything is in integer screen pixels, no negative gap, outline is off / full /
 
 - `t` = thickness, `half = t / 2`. The center block is the `t x t` square whose
   top-left is `(cx - half, cy - half)`; with odd `t` the center pixel is its middle.
-- The four bars are `length` px long, `t` px thick, and start `gap` px outside the
-  center block. Gap 0 makes them touch the block (a `t x t` hole unless the dot is on).
-- Center dot = the center block itself.
+- `gap` follows CS2: it is the distance in pixels from the center pixel to the
+  innermost bar pixel (verified against a real CS2 config: CS2 gap 3 == 2 empty
+  pixels per side). So the bars are `length` px long, `t` px thick, and start
+  `gap - 1` px outside the center block; gap 1 leaves only the center block empty.
+  Gap 0 pulls the bars one pixel into the center: the center block is filled and
+  the bars keep `length - 1` px outside of it (a solid cross). For `t > 1` the
+  same rule is applied from the edge of the center block (assumption, untested
+  against CS2).
+- Center dot = the center block itself (emitted once even when gap 0 fills it).
 - Outline is 1 px black at the crosshair alpha. Full = a rect one pixel larger on
   every side. Half = only the top edge (including the top-left corner) and the left
   edge, which is what CS2 describes as "only the top-left portions of the outline".

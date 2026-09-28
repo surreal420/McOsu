@@ -75,12 +75,19 @@ std::vector<OsuFPoSuCrosshair::RECT> OsuFPoSuCrosshair::build(PARAMS p, int cx, 
 
 	std::vector<RECT> fills;
 
-	if (p.length > 0)
+	// CS2 gap semantics: gap = distance (in pixels) from the center pixel to the innermost bar pixel,
+	// so gap 1 leaves only the center block empty, gap 0 pulls the bars into the center (solid cross).
+	// For thick bars the same rule is applied from the edge of the center block.
+	const int inset = (p.gap > 0 ? p.gap - 1 : 0);				// empty pixels between the center block and a bar
+	const int barLength = (p.gap > 0 ? p.length : p.length - 1);	// gap 0: the innermost bar pixel is the center block itself
+	const bool fillCenter = (p.dot || (p.gap == 0 && p.length > 0));
+
+	if (barLength > 0)
 	{
-		RECT left = {c0x - p.gap - p.length, c0y, p.length, t, false};
-		RECT right = {c0x + t + p.gap, c0y, p.length, t, false};
-		RECT top = {c0x, c0y - p.gap - p.length, t, p.length, false};
-		RECT bottom = {c0x, c0y + t + p.gap, t, p.length, false};
+		RECT left = {c0x - inset - barLength, c0y, barLength, t, false};
+		RECT right = {c0x + t + inset, c0y, barLength, t, false};
+		RECT top = {c0x, c0y - inset - barLength, t, barLength, false};
+		RECT bottom = {c0x, c0y + t + inset, t, barLength, false};
 
 		fills.push_back(left);
 		fills.push_back(right);
@@ -88,10 +95,10 @@ std::vector<OsuFPoSuCrosshair::RECT> OsuFPoSuCrosshair::build(PARAMS p, int cx, 
 		fills.push_back(bottom);
 	}
 
-	if (p.dot)
+	if (fillCenter)
 	{
-		RECT dot = {c0x, c0y, t, t, false};
-		fills.push_back(dot);
+		RECT center = {c0x, c0y, t, t, false};
+		fills.push_back(center);
 	}
 
 	std::vector<RECT> out;

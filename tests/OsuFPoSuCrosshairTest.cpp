@@ -47,11 +47,19 @@ static void testThinCrossNoOutline()
 {
 	PARAMS p = base();
 	std::vector<RECT> r = OsuFPoSuCrosshair::build(p, 100, 100);
+	// gap 2 = innermost bar pixel is 2px from the center pixel -> exactly 1 empty pixel per side
 	CHECK(r.size() == 4, "thin cross: expected 4 rects, got %zu", r.size());
-	CHECK(hasRect(r, 94, 100, 4, 1, false), "thin cross: left bar");
-	CHECK(hasRect(r, 103, 100, 4, 1, false), "thin cross: right bar");
-	CHECK(hasRect(r, 100, 94, 1, 4, false), "thin cross: top bar");
-	CHECK(hasRect(r, 100, 103, 1, 4, false), "thin cross: bottom bar");
+	CHECK(hasRect(r, 95, 100, 4, 1, false), "thin cross: left bar");
+	CHECK(hasRect(r, 102, 100, 4, 1, false), "thin cross: right bar");
+	CHECK(hasRect(r, 100, 95, 1, 4, false), "thin cross: top bar");
+	CHECK(hasRect(r, 100, 102, 1, 4, false), "thin cross: bottom bar");
+
+	// gap 1: bars touch the center pixel, only the center pixel stays empty
+	p.gap = 1;
+	r = OsuFPoSuCrosshair::build(p, 100, 100);
+	CHECK(r.size() == 4, "gap 1: expected 4 rects, got %zu", r.size());
+	CHECK(hasRect(r, 96, 100, 4, 1, false), "gap 1: left bar ends next to the center pixel");
+	CHECK(hasRect(r, 101, 100, 4, 1, false), "gap 1: right bar starts next to the center pixel");
 }
 
 static void testCenterDot()
@@ -72,20 +80,43 @@ static void testThickBarsAndZeroGap()
 	PARAMS p = base();
 	p.thickness = 3;
 	p.length = 5;
-	p.gap = 0;
+	p.gap = 1;
 	std::vector<RECT> r = OsuFPoSuCrosshair::build(p, 100, 100);
-	CHECK(r.size() == 4, "thick: expected 4 rects, got %zu", r.size());
-	CHECK(hasRect(r, 94, 99, 5, 3, false), "thick: left bar touches center block");
-	CHECK(hasRect(r, 102, 99, 5, 3, false), "thick: right bar touches center block");
-	CHECK(hasRect(r, 99, 94, 3, 5, false), "thick: top bar");
-	CHECK(hasRect(r, 99, 102, 3, 5, false), "thick: bottom bar");
+	CHECK(r.size() == 4, "thick gap 1: expected 4 rects, got %zu", r.size());
+	CHECK(hasRect(r, 94, 99, 5, 3, false), "thick gap 1: left bar touches center block");
+	CHECK(hasRect(r, 102, 99, 5, 3, false), "thick gap 1: right bar touches center block");
+	CHECK(hasRect(r, 99, 94, 3, 5, false), "thick gap 1: top bar");
+	CHECK(hasRect(r, 99, 102, 3, 5, false), "thick gap 1: bottom bar");
+
+	// gap 0: solid cross, the innermost bar pixel is the center block, so bars keep length-1 px outside of it
+	p.gap = 0;
+	r = OsuFPoSuCrosshair::build(p, 100, 100);
+	CHECK(r.size() == 5, "thick gap 0: expected 5 rects, got %zu", r.size());
+	CHECK(hasRect(r, 95, 99, 4, 3, false), "thick gap 0: left bar");
+	CHECK(hasRect(r, 102, 99, 4, 3, false), "thick gap 0: right bar");
+	CHECK(hasRect(r, 99, 95, 3, 4, false), "thick gap 0: top bar");
+	CHECK(hasRect(r, 99, 102, 3, 4, false), "thick gap 0: bottom bar");
+	CHECK(hasRect(r, 99, 99, 3, 3, false), "thick gap 0: center block filled");
+
+	// gap 0 with dot: the center block is still emitted exactly once
+	p.dot = true;
+	r = OsuFPoSuCrosshair::build(p, 100, 100);
+	CHECK(r.size() == 5, "thick gap 0 + dot: expected 5 rects, got %zu", r.size());
+
+	// gap 0 with length 1 (thin): only the center pixel remains
+	PARAMS q = base();
+	q.gap = 0;
+	q.length = 1;
+	r = OsuFPoSuCrosshair::build(q, 100, 100);
+	CHECK(r.size() == 1 && hasRect(r, 100, 100, 1, 1, false), "gap 0 length 1: only the center pixel, got %zu rects", r.size());
 
 	// even thickness: center block starts at cx - t/2
+	p = base();
 	p.thickness = 2;
 	p.length = 1;
 	r = OsuFPoSuCrosshair::build(p, 100, 100);
-	CHECK(hasRect(r, 98, 99, 1, 2, false), "even thickness: left bar");
-	CHECK(hasRect(r, 101, 99, 1, 2, false), "even thickness: right bar");
+	CHECK(hasRect(r, 97, 99, 1, 2, false), "even thickness: left bar");
+	CHECK(hasRect(r, 102, 99, 1, 2, false), "even thickness: right bar");
 }
 
 static void testFullOutline()
@@ -96,7 +127,7 @@ static void testFullOutline()
 	std::vector<RECT> r = OsuFPoSuCrosshair::build(p, 100, 100);
 	CHECK(r.size() == 10, "full outline: expected 10 rects, got %zu", r.size());
 	CHECK(countOutline(r, true) == 5, "full outline: 5 outline rects");
-	CHECK(hasRect(r, 93, 99, 6, 3, true), "full outline: left bar outline");
+	CHECK(hasRect(r, 94, 99, 6, 3, true), "full outline: left bar outline");
 	CHECK(hasRect(r, 99, 99, 3, 3, true), "full outline: dot outline");
 	// outlines are emitted before fills so fills always win
 	for (size_t i=0; i<r.size(); i++)
@@ -112,14 +143,14 @@ static void testHalfOutline()
 	std::vector<RECT> r = OsuFPoSuCrosshair::build(p, 100, 100);
 	CHECK(r.size() == 12, "half outline: expected 12 rects, got %zu", r.size());
 	CHECK(countOutline(r, true) == 8, "half outline: 8 outline strips");
-	// left bar is {94,99,3,2} (center block starts at 99, gap 2, length 3):
+	// left bar is {95,99,3,2} (center block starts at 99, gap 2 = 1 empty px, length 3):
 	// top strip spans the top-left corner + top edge, left strip the left edge
-	CHECK(hasRect(r, 94, 99, 3, 2, false), "half outline: left bar fill");
-	CHECK(hasRect(r, 93, 98, 4, 1, true), "half outline: left bar top strip");
-	CHECK(hasRect(r, 93, 99, 1, 2, true), "half outline: left bar left strip");
+	CHECK(hasRect(r, 95, 99, 3, 2, false), "half outline: left bar fill");
+	CHECK(hasRect(r, 94, 98, 4, 1, true), "half outline: left bar top strip");
+	CHECK(hasRect(r, 94, 99, 1, 2, true), "half outline: left bar left strip");
 	// nothing on the right/bottom sides
-	CHECK(!hasRect(r, 97, 99, 1, 2, true), "half outline: no right strip");
-	CHECK(!hasRect(r, 93, 101, 4, 1, true), "half outline: no bottom strip");
+	CHECK(!hasRect(r, 98, 99, 1, 2, true), "half outline: no right strip");
+	CHECK(!hasRect(r, 94, 101, 4, 1, true), "half outline: no bottom strip");
 }
 
 static void testZeroLengthAndClamping()
@@ -131,6 +162,10 @@ static void testZeroLengthAndClamping()
 	p.dot = true;
 	r = OsuFPoSuCrosshair::build(p, 100, 100);
 	CHECK(r.size() == 1, "length 0 with dot: only the dot, got %zu", r.size());
+	p.dot = false;
+	p.gap = 0;
+	r = OsuFPoSuCrosshair::build(p, 100, 100);
+	CHECK(r.size() == 0, "length 0 gap 0 without dot: nothing, got %zu", r.size());
 
 	PARAMS c = base();
 	c.r = -5; c.g = 999; c.b = 256; c.a = -1;
@@ -149,7 +184,7 @@ static void testZeroLengthAndClamping()
 	PARAMS z = base();
 	z.thickness = 0;
 	r = OsuFPoSuCrosshair::build(z, 100, 100);
-	CHECK(hasRect(r, 94, 100, 4, 1, false), "build clamps thickness 0 to 1");
+	CHECK(hasRect(r, 95, 100, 4, 1, false), "build clamps thickness 0 to 1");
 }
 
 int main()

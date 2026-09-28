@@ -14,6 +14,7 @@
 // Mirrors the CS2 "Rush Hour" (2026-09-22) pixel based crosshair settings:
 // length 0..255 px, thickness 0..31 px (0 draws as 1), gap 0..128 px, RGBA 0..255,
 // outline off/full/half (half = only the top-left edges of every bar), optional center dot.
+// gap = pixels from the center pixel to the innermost bar pixel (gap 1 = only the center is empty, gap 0 = solid cross).
 // All values are literal screen pixels. build() returns axis aligned rects, outline rects first.
 class OsuFPoSuCrosshair
 {
