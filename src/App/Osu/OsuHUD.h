@@ -47,6 +47,7 @@ public:
 	void drawCursorVR1(Graphics *g, Matrix4 &mvp, Vector2 pos, float alphaMultiplier = 1.0f);
 	void drawCursorVR2(Graphics *g, Matrix4 &mvp, Vector2 pos, float alphaMultiplier = 1.0f);
 	void drawCursorRipples(Graphics *g);
+	void drawFPoSuCrosshair(Graphics *g, Vector2 pos, float alphaMultiplier = 1.0f); // CS2 style crosshair, see fposu_crosshair
 	void drawFps(Graphics *g) {drawFps(g, m_tempFont, m_fCurFps);}
 	void drawHitErrorBar(Graphics *g, OsuBeatmapStandard *beatmapStd);
 	void drawPlayfieldBorder(Graphics *g, Vector2 playfieldCenter, Vector2 playfieldSize, float hitcircleDiameter);
@@ -196,6 +197,15 @@ private:
 	ConVar *m_osu_mod_target_50_percent_ref;
 	ConVar *m_osu_mod_fposu_ref;
 	ConVar *m_fposu_draw_scorebarbg_on_top_ref;
+	ConVar *m_fposu_crosshair_color_r_ref;
+	ConVar *m_fposu_crosshair_color_g_ref;
+	ConVar *m_fposu_crosshair_color_b_ref;
+	ConVar *m_fposu_crosshair_alpha_ref;
+	ConVar *m_fposu_crosshair_outline_ref;
+	ConVar *m_fposu_crosshair_thickness_ref;
+	ConVar *m_fposu_crosshair_dot_ref;
+	ConVar *m_fposu_crosshair_length_ref;
+	ConVar *m_fposu_crosshair_gap_ref;
 	ConVar *m_osu_playfield_stretch_x_ref;
 	ConVar *m_osu_playfield_stretch_y_ref;
 	ConVar *m_osu_mp_win_condition_accuracy_ref;

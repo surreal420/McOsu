@@ -159,6 +159,7 @@ Osu::Osu(Osu2 *osu2, int instanceID)
 	m_osu_playfield_stretch_x = convar->getConVarByName("osu_playfield_stretch_x");
 	m_osu_playfield_stretch_y = convar->getConVarByName("osu_playfield_stretch_y");
 	m_fposu_draw_cursor_trail_ref = convar->getConVarByName("fposu_draw_cursor_trail");
+	m_fposu_crosshair_ref = convar->getConVarByName("fposu_crosshair");
 	m_osu_volume_effects_ref = convar->getConVarByName("osu_volume_effects");
 	m_osu_mod_mafham_ref = convar->getConVarByName("osu_mod_mafham");
 	m_osu_mod_fposu_ref = convar->getConVarByName("osu_mod_fposu");
@@ -682,12 +683,17 @@ void Osu::draw(Graphics *g)
 		{
 			Vector2 cursorPos = (beatmapStd != NULL && !isAuto) ? beatmapStd->getCursorPos() : engine->getMouse()->getPos();
 
-			if (isFPoSu && (!isFPoSu3d || ((isAuto && !getSelectedBeatmap()->isPaused()) || (!getSelectedBeatmap()->isPaused() && !m_optionsMenu->isVisible() && !m_modSelector->isVisible()))))
+			const bool isFPoSuCenterCursor = (isFPoSu && (!isFPoSu3d || ((isAuto && !getSelectedBeatmap()->isPaused()) || (!getSelectedBeatmap()->isPaused() && !m_optionsMenu->isVisible() && !m_modSelector->isVisible()))));
+			if (isFPoSuCenterCursor)
 				cursorPos = getScreenSize() / 2.0f;
 
 			const bool updateAndDrawTrail = !isFPoSu;
+			const float cursorAlpha = (osu_mod_fadingcursor.getBool() && !isAuto) ? fadingCursorAlpha : 1.0f;
 
-			m_hud->drawCursor(g, cursorPos, (osu_mod_fadingcursor.getBool() && !isAuto) ? fadingCursorAlpha : 1.0f, isAuto, updateAndDrawTrail);
+			if (isFPoSuCenterCursor && m_fposu_crosshair_ref->getBool())
+				m_hud->drawFPoSuCrosshair(g, cursorPos, cursorAlpha);
+			else
+				m_hud->drawCursor(g, cursorPos, cursorAlpha, isAuto, updateAndDrawTrail);
 		}
 
 		// draw projected VR cursors for spectators

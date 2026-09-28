@@ -155,6 +155,7 @@ private:
 	void onSliderChangeOneDecimalPlaceMeters(CBaseUISlider *slider);
 	void onSliderChangeInt(CBaseUISlider *slider);
 	void onSliderChangeIntMS(CBaseUISlider *slider);
+	void onSliderChangeFPoSuCrosshairOutline(CBaseUISlider *slider);
 	void onSliderChangeFloatMS(CBaseUISlider *slider);
 	void onSliderChangePercent(CBaseUISlider *slider);
 

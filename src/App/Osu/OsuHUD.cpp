@@ -23,6 +23,7 @@
 #include "OsuVR.h"
 #include "OsuMultiplayer.h"
 #include "OsuModFPoSu.h"
+#include "OsuFPoSuCrosshair.h"
 #include "OsuSkin.h"
 #include "OsuSkinImage.h"
 
@@ -246,6 +247,15 @@ OsuHUD::OsuHUD(Osu *osu) : OsuScreen(osu)
 	m_osu_mod_target_50_percent_ref = convar->getConVarByName("osu_mod_target_50_percent");
 	m_osu_mod_fposu_ref = convar->getConVarByName("osu_mod_fposu");
 	m_fposu_draw_scorebarbg_on_top_ref = convar->getConVarByName("fposu_draw_scorebarbg_on_top");
+	m_fposu_crosshair_color_r_ref = convar->getConVarByName("fposu_crosshair_color_r");
+	m_fposu_crosshair_color_g_ref = convar->getConVarByName("fposu_crosshair_color_g");
+	m_fposu_crosshair_color_b_ref = convar->getConVarByName("fposu_crosshair_color_b");
+	m_fposu_crosshair_alpha_ref = convar->getConVarByName("fposu_crosshair_alpha");
+	m_fposu_crosshair_outline_ref = convar->getConVarByName("fposu_crosshair_outline");
+	m_fposu_crosshair_thickness_ref = convar->getConVarByName("fposu_crosshair_thickness");
+	m_fposu_crosshair_dot_ref = convar->getConVarByName("fposu_crosshair_dot");
+	m_fposu_crosshair_length_ref = convar->getConVarByName("fposu_crosshair_length");
+	m_fposu_crosshair_gap_ref = convar->getConVarByName("fposu_crosshair_gap");
 	m_osu_playfield_stretch_x_ref = convar->getConVarByName("osu_playfield_stretch_x");
 	m_osu_playfield_stretch_y_ref = convar->getConVarByName("osu_playfield_stretch_y");
 	m_osu_mp_win_condition_accuracy_ref = convar->getConVarByName("osu_mp_win_condition_accuracy");
@@ -992,6 +1002,36 @@ void OsuHUD::drawCursorTrailInt(Graphics *g, Shader *trailShader, std::vector<CU
 	while ((trail.size() > 1 && engine->getTime() > trail[0].time) || trail.size() > osu_cursor_trail_max_size.getInt()) // always leave at least 1 previous entry in there
 	{
 		trail.erase(trail.begin());
+	}
+}
+
+void OsuHUD::drawFPoSuCrosshair(Graphics *g, Vector2 pos, float alphaMultiplier)
+{
+	OsuFPoSuCrosshair::PARAMS p;
+	p.r = m_fposu_crosshair_color_r_ref->getInt();
+	p.g = m_fposu_crosshair_color_g_ref->getInt();
+	p.b = m_fposu_crosshair_color_b_ref->getInt();
+	p.a = m_fposu_crosshair_alpha_ref->getInt();
+	p.outline = m_fposu_crosshair_outline_ref->getInt();
+	p.thickness = m_fposu_crosshair_thickness_ref->getInt();
+	p.dot = m_fposu_crosshair_dot_ref->getBool();
+	p.length = m_fposu_crosshair_length_ref->getInt();
+	p.gap = m_fposu_crosshair_gap_ref->getInt();
+	OsuFPoSuCrosshair::clampParams(p);
+
+	const std::vector<OsuFPoSuCrosshair::RECT> rects = OsuFPoSuCrosshair::build(p, (int)pos.x, (int)pos.y);
+
+	// like CS2, the (black) outline uses the crosshair alpha
+	const float alpha = ((float)p.a / 255.0f) * alphaMultiplier;
+	const Color fillColor = COLOR(255, p.r, p.g, p.b);
+
+	for (size_t i=0; i<rects.size(); i++)
+	{
+		const OsuFPoSuCrosshair::RECT &r = rects[i];
+
+		g->setColor(r.outline ? 0xff000000 : fillColor);
+		g->setAlpha(alpha);
+		g->fillRect(r.x, r.y, r.w, r.h);
 	}
 }
 

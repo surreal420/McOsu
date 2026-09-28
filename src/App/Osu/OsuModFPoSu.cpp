@@ -96,6 +96,18 @@ ConVar fposu_3d_wireframe("fposu_3d_wireframe", false, MCOSU_FPOSU_4D_MODE_CVAR_
 ConVar fposu_draw_cursor_trail("fposu_draw_cursor_trail", true, FCVAR_NONE);
 ConVar fposu_draw_scorebarbg_on_top("fposu_draw_scorebarbg_on_top", false, FCVAR_NONE);
 
+// CS2 style static crosshair (pixel units like CS2 after the 2026-09-22 "Rush Hour" update), see OsuFPoSuCrosshair
+ConVar fposu_crosshair("fposu_crosshair", false, FCVAR_NONE, "draw a CS2 style static crosshair instead of the skin cursor while playing in FPoSu");
+ConVar fposu_crosshair_color_r("fposu_crosshair_color_r", 0, FCVAR_NONE, "0-255");
+ConVar fposu_crosshair_color_g("fposu_crosshair_color_g", 255, FCVAR_NONE, "0-255");
+ConVar fposu_crosshair_color_b("fposu_crosshair_color_b", 0, FCVAR_NONE, "0-255");
+ConVar fposu_crosshair_alpha("fposu_crosshair_alpha", 255, FCVAR_NONE, "0-255");
+ConVar fposu_crosshair_outline("fposu_crosshair_outline", 1, FCVAR_NONE, "0 = off, 1 = full, 2 = half (top-left edges only)");
+ConVar fposu_crosshair_thickness("fposu_crosshair_thickness", 1, FCVAR_NONE, "0-31 pixels (0 draws as 1)");
+ConVar fposu_crosshair_dot("fposu_crosshair_dot", false, FCVAR_NONE, "center dot");
+ConVar fposu_crosshair_length("fposu_crosshair_length", 8, FCVAR_NONE, "0-255 pixels");
+ConVar fposu_crosshair_gap("fposu_crosshair_gap", 4, FCVAR_NONE, "0-128 pixels");
+
 ConVar fposu_mod_strafing("fposu_mod_strafing", false, FCVAR_NONE);
 ConVar fposu_mod_strafing_strength_x("fposu_mod_strafing_strength_x", 0.3f, FCVAR_NONE);
 ConVar fposu_mod_strafing_frequency_x("fposu_mod_strafing_frequency_x", 0.1f, FCVAR_NONE);

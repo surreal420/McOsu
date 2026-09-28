@@ -1268,6 +1268,44 @@ OsuOptionsMenu::OsuOptionsMenu(Osu *osu) : OsuScreenBackable(osu)
 	spheresAASlider->setKeyDelta(2.0f);
 	spheresAASlider->setAnimated(false);
 #endif
+	addSubSection("FPoSu - Crosshair", "cs2 crosshair");
+	addCheckbox("CS2 Crosshair", "Draw a CS2 style static crosshair instead of the skin cursor while playing in FPoSu.\nAll sizes are in screen pixels, like CS2 after the 2026 \"Rush Hour\" update.\nNOTE: Use CTRL + O during gameplay to see your changes live!", convar->getConVarByName("fposu_crosshair"));
+	{
+		const char *rgba[4] = {"fposu_crosshair_color_r", "fposu_crosshair_color_g", "fposu_crosshair_color_b", "fposu_crosshair_alpha"};
+		const char *rgbaLabels[4] = {"Red:", "Green:", "Blue:", "Alpha:"};
+		for (int i=0; i<4; i++)
+		{
+			CBaseUISlider *slider = addSlider(rgbaLabels[i], 0.0f, 255.0f, convar->getConVarByName(rgba[i]), -1.0f, true);
+			slider->setChangeCallback( fastdelegate::MakeDelegate(this, &OsuOptionsMenu::onSliderChangeInt) );
+			slider->setKeyDelta(1);
+			slider->setAnimated(false);
+		}
+	}
+	{
+		CBaseUISlider *outlineSlider = addSlider("Outline:", 0.0f, 2.0f, convar->getConVarByName("fposu_crosshair_outline"), -1.0f, true);
+		outlineSlider->setChangeCallback( fastdelegate::MakeDelegate(this, &OsuOptionsMenu::onSliderChangeFPoSuCrosshairOutline) );
+		outlineSlider->setKeyDelta(1);
+		outlineSlider->setAnimated(false);
+	}
+	{
+		CBaseUISlider *thicknessSlider = addSlider("Thickness:", 0.0f, 31.0f, convar->getConVarByName("fposu_crosshair_thickness"), -1.0f, true);
+		thicknessSlider->setChangeCallback( fastdelegate::MakeDelegate(this, &OsuOptionsMenu::onSliderChangeInt) );
+		thicknessSlider->setKeyDelta(1);
+		thicknessSlider->setAnimated(false);
+	}
+	addCheckbox("Center Dot", convar->getConVarByName("fposu_crosshair_dot"));
+	{
+		CBaseUISlider *lengthSlider = addSlider("Length:", 0.0f, 255.0f, convar->getConVarByName("fposu_crosshair_length"), -1.0f, true);
+		lengthSlider->setChangeCallback( fastdelegate::MakeDelegate(this, &OsuOptionsMenu::onSliderChangeInt) );
+		lengthSlider->setKeyDelta(1);
+		lengthSlider->setAnimated(false);
+	}
+	{
+		CBaseUISlider *gapSlider = addSlider("Gap:", 0.0f, 128.0f, convar->getConVarByName("fposu_crosshair_gap"), -1.0f, true);
+		gapSlider->setChangeCallback( fastdelegate::MakeDelegate(this, &OsuOptionsMenu::onSliderChangeInt) );
+		gapSlider->setKeyDelta(1);
+		gapSlider->setAnimated(false);
+	}
 	if (env->getOS() == Environment::OS::OS_WINDOWS)
 	{
 		addSubSection("FPoSu - Mouse");
@@ -3287,6 +3325,33 @@ void OsuOptionsMenu::onSliderChangeFloatMS(CBaseUISlider *slider)
 					UString text = UString::format("%i", (int)std::round(m_elements[i].cvar->getFloat()*1000.0f));
 					text.append(" ms");
 					labelPointer->setText(text);
+				}
+
+				onResetUpdate(m_elements[i].resetButton);
+
+				break;
+			}
+		}
+	}
+}
+
+void OsuOptionsMenu::onSliderChangeFPoSuCrosshairOutline(CBaseUISlider *slider)
+{
+	for (int i=0; i<m_elements.size(); i++)
+	{
+		for (int e=0; e<m_elements[i].elements.size(); e++)
+		{
+			if (m_elements[i].elements[e] == slider)
+			{
+				if (m_elements[i].cvar != NULL)
+					m_elements[i].cvar->setValue(std::round(slider->getFloat())); // round to int
+
+				if (m_elements[i].elements.size() == 3)
+				{
+					const int outline = m_elements[i].cvar->getInt();
+
+					CBaseUILabel *labelPointer = dynamic_cast<CBaseUILabel*>(m_elements[i].elements[2]);
+					labelPointer->setText(outline == 1 ? "Full" : (outline == 2 ? "Half" : "Off"));
 				}
 
 				onResetUpdate(m_elements[i].resetButton);
