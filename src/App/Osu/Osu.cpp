@@ -160,6 +160,7 @@ Osu::Osu(Osu2 *osu2, int instanceID)
 	m_osu_playfield_stretch_y = convar->getConVarByName("osu_playfield_stretch_y");
 	m_fposu_draw_cursor_trail_ref = convar->getConVarByName("fposu_draw_cursor_trail");
 	m_fposu_crosshair_ref = convar->getConVarByName("fposu_crosshair");
+	m_fposu_crosshair_hide_trail_ref = convar->getConVarByName("fposu_crosshair_hide_trail");
 	m_osu_volume_effects_ref = convar->getConVarByName("osu_volume_effects");
 	m_osu_mod_mafham_ref = convar->getConVarByName("osu_mod_mafham");
 	m_osu_mod_fposu_ref = convar->getConVarByName("osu_mod_fposu");
@@ -662,8 +663,9 @@ void Osu::draw(Graphics *g)
 		if (isFPoSu && !isFPoSu3d && m_osu_draw_cursor_ripples_ref->getBool())
 			m_hud->drawCursorRipples(g);
 
-		// draw FPoSu cursor trail
-		if (isFPoSu && !isFPoSu3d && m_fposu_draw_cursor_trail_ref->getBool())
+		// draw FPoSu cursor trail (optionally hidden while the CS2 crosshair replaces the cursor)
+		const bool hideTrailForCrosshair = (m_fposu_crosshair_ref->getBool() && m_fposu_crosshair_hide_trail_ref->getBool());
+		if (isFPoSu && !isFPoSu3d && m_fposu_draw_cursor_trail_ref->getBool() && !hideTrailForCrosshair)
 			m_hud->drawCursorTrail(g, beatmapStd->getCursorPos(), osu_mod_fadingcursor.getBool() ? fadingCursorAlpha : 1.0f);
 
 		if (isBufferedPlayfieldDraw)

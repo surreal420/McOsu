@@ -1297,6 +1297,7 @@ OsuOptionsMenu::OsuOptionsMenu(Osu *osu) : OsuScreenBackable(osu)
 #endif
 	addSubSection("FPoSu - Crosshair", "cs2 crosshair");
 	addCheckbox("CS2 Crosshair", "Draw a CS2 style static crosshair instead of the skin cursor while playing in FPoSu.\nAll sizes are in screen pixels, like CS2 after the 2026 \"Rush Hour\" update.\nNOTE: Use CTRL + O during gameplay to see your changes live!", convar->getConVarByName("fposu_crosshair"));
+	addCheckbox("Hide Cursor Trail", "Don't draw the skin cursor trail while the CS2 crosshair is enabled.\nOnly affects FPoSu with \"CS2 Crosshair\" turned on, the normal \"Draw Cursor Trail\" option is left untouched.", convar->getConVarByName("fposu_crosshair_hide_trail"));
 	addFPoSuCrosshairPreview();
 	m_fposuCrosshairCodeTextbox = addTextbox("", "Share Code:");
 	{

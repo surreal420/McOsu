@@ -267,6 +267,7 @@ private:
 	ConVar *m_osu_playfield_stretch_y;
 	ConVar *m_fposu_draw_cursor_trail_ref;
 	ConVar *m_fposu_crosshair_ref;
+	ConVar *m_fposu_crosshair_hide_trail_ref;
 	ConVar *m_osu_volume_effects_ref;
 	ConVar *m_osu_mod_mafham_ref;
 	ConVar *m_osu_mod_fposu_ref;

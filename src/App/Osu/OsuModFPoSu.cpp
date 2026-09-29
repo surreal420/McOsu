@@ -98,6 +98,7 @@ ConVar fposu_draw_scorebarbg_on_top("fposu_draw_scorebarbg_on_top", false, FCVAR
 
 // CS2 style static crosshair (pixel units like CS2 after the 2026-09-22 "Rush Hour" update), see OsuFPoSuCrosshair
 ConVar fposu_crosshair("fposu_crosshair", false, FCVAR_NONE, "draw a CS2 style static crosshair instead of the skin cursor while playing in FPoSu");
+ConVar fposu_crosshair_hide_trail("fposu_crosshair_hide_trail", true, FCVAR_NONE, "don't draw the skin cursor trail while fposu_crosshair is enabled");
 ConVar fposu_crosshair_color_r("fposu_crosshair_color_r", 0, FCVAR_NONE, "0-255");
 ConVar fposu_crosshair_color_g("fposu_crosshair_color_g", 255, FCVAR_NONE, "0-255");
 ConVar fposu_crosshair_color_b("fposu_crosshair_color_b", 0, FCVAR_NONE, "0-255");
